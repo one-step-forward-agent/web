@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Focus Day</title>
+  <style>
+    :root { --ink:#18221f; --muted:#6b7771; --paper:#f5f1e8; --panel:#fffdf8; --line:#d9d8ce; --accent:#d96c45; --sage:#dfe8d8; }
+    * { box-sizing:border-box; } body { margin:0; color:var(--ink); background:radial-gradient(circle at 90% 0%, #e3ebd7 0 18%, transparent 42%), var(--paper); font:15px Georgia, serif; }
+    header { max-width:1180px; margin:auto; padding:34px 28px 18px; display:flex; justify-content:space-between; align-items:end; gap:20px; }
+    h1 { margin:0; font-size:clamp(34px, 6vw, 68px); letter-spacing:-1px; line-height:.9; font-weight:500; } .date { color:var(--muted); font:12px ui-monospace, monospace; text-transform:uppercase; letter-spacing:1px; } .session { margin-top:8px; color:var(--accent); font:12px ui-monospace, monospace; }
+    main { max-width:1180px; margin:auto; padding:20px 28px 60px; display:grid; grid-template-columns:280px 1fr; gap:22px; }
+    section, aside { background:rgba(255,253,248,.84); border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 35px #81795c16; } aside { padding:22px; height:max-content; } section { padding:26px; }
+    h2 { margin:0 0 18px; font-size:25px; font-weight:500; } label { display:block; margin:14px 0 6px; font:11px ui-monospace, monospace; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+    input, textarea, select { width:100%; border:1px solid var(--line); border-radius:4px; padding:11px 12px; background:#fffefb; color:var(--ink); font:15px Georgia, serif; } textarea { min-height:72px; resize:vertical; }
+    button { border:0; border-radius:4px; padding:11px 14px; background:var(--ink); color:#fffdf8; cursor:pointer; font:12px ui-monospace, monospace; text-transform:uppercase; letter-spacing:.6px; } button:hover { background:var(--accent); } .secondary { background:var(--sage); color:var(--ink); }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; } .notice { min-height:20px; margin-top:14px; color:var(--muted); font:12px ui-monospace, monospace; }
+    .event { display:grid; grid-template-columns:110px 1fr auto; gap:18px; align-items:start; padding:18px 0; border-top:1px solid var(--line); } .event:first-child { border-top:0; padding-top:0; } .time { color:var(--accent); font:13px ui-monospace, monospace; } .event h3 { margin:0 0 5px; font-size:20px; font-weight:500; } .event p { margin:0; color:var(--muted); line-height:1.45; } .empty { color:var(--muted); padding:35px 0; }
+    .chat { margin-top:28px; border:1px solid var(--line); border-radius:8px; background:#f9f7ef; overflow:hidden; } .chat-head { padding:18px; border-bottom:1px solid var(--line); } .chat-head h3 { margin:0 0 5px; font-size:20px; font-weight:500; } .chat-head p { margin:0; color:var(--muted); font-size:13px; } .messages { min-height:120px; max-height:300px; overflow:auto; padding:16px; } .message { max-width:82%; margin:8px 0; padding:10px 12px; border-radius:8px; white-space:pre-wrap; line-height:1.4; } .message.user { margin-left:auto; background:var(--sage); } .message.assistant { background:#fffdf8; border:1px solid var(--line); } .message.confirm { max-width:94%; } .confirm-actions { display:flex; gap:8px; margin-top:12px; } .chat-form { display:flex; gap:8px; padding:12px; border-top:1px solid var(--line); } .chat-form textarea { min-height:48px; max-height:130px; resize:vertical; } .chat-form button { flex:0 0 auto; align-self:end; } .recording { color:var(--accent); font:12px ui-monospace, monospace; padding:0 12px 10px; }
+    @media (max-width:700px) { header { padding:25px 18px 10px; } main { padding:14px 18px 40px; display:block; } aside { margin-bottom:16px; } section { padding:20px; } .event { grid-template-columns:1fr; gap:6px; } .event button { width:max-content; } .chat-form { flex-wrap:wrap; } .chat-form textarea { flex-basis:100%; } }
+  </style>
+</head>
+<body>
+  <header><div><div class="date">Личный планировщик дня</div><h1>Focus Day</h1><div id="sessionState" class="session">Проверяем вход...</div></div><div id="today" class="date"></div></header>
+  <main>
+    <aside>
+      <h2>Ваш аккаунт</h2>
+      <p id="account" class="notice">Проверяем вход...</p>
+      <div class="actions"><button class="secondary" id="google">Войти через Google</button></div>
+      <div id="notice" class="notice"></div>
+    </aside>
+    <section>
+      <div class="chat">
+        <div class="chat-head"><h3>Чат-планировщик</h3><p>Напишите план, задайте вопрос, прикрепите PDF/DOCX или запишите голосовое сообщение.</p></div>
+        <div id="messages" class="messages"><div class="message assistant">Привет. Расскажите, что нужно запланировать.</div></div>
+        <div id="recording" class="recording"></div>
+        <form id="chatForm" class="chat-form"><textarea id="chatText" required placeholder="Например: завтра в 15:00 встреча с командой, напомни за 10 минут"></textarea><button id="attach" type="button" class="secondary" title="Прикрепить файл">Файл</button><input id="fileInput" type="file" accept=".pdf,.docx" hidden><button id="mic" type="button" class="secondary" title="Записать голос">Голос</button><button type="submit">Отправить</button></form>
+      </div>
+    </section>
+  </main>
+<script>
+  const $ = id => document.getElementById(id), notice = message => $('notice').textContent = message;
+  let currentUser = null;
+  $('today').textContent = new Intl.DateTimeFormat('ru-RU', {dateStyle:'full'}).format(new Date());
+  async function api(url, options) { const response = await fetch(url, options); const data = await response.json().catch(() => ({})); if (!response.ok) throw Error(data.detail || 'Request failed'); return data; }
+  $('google').onclick = async () => { try { const result = await api('/auth/google/login'); window.location.href = result.authorization_url; } catch (error) { notice(error.message); } };
+  function addMessage(text, role) { const message = document.createElement('div'); message.className = 'message ' + role; message.textContent = text; $('messages').appendChild(message); $('messages').scrollTop = $('messages').scrollHeight; }
+  function askForConfirmation(result) { if (!result.proposed_events?.length) { addMessage(result.answer || 'Новых событий не найдено.', 'assistant'); return; } const message = document.createElement('div'); message.className = 'message assistant confirm'; message.textContent = (result.answer || 'Я распознал следующие события:') + '\n\n' + result.proposed_events.map(item => `• ${item.title} — ${new Date(item.starts_at).toLocaleString()}`).join('\n') + '\n\nДобавить их в календарь?'; const actions = document.createElement('div'); actions.className = 'confirm-actions'; const yes = document.createElement('button'); yes.textContent = 'Да, добавить'; const no = document.createElement('button'); no.textContent = 'Нет'; no.className = 'secondary'; actions.append(yes, no); message.appendChild(actions); $('messages').appendChild(message); $('messages').scrollTop = $('messages').scrollHeight; yes.onclick = async () => { yes.disabled = true; no.disabled = true; try { const saved = await api('/api/assistant/confirm', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({events:result.proposed_events})}); message.appendChild(document.createTextNode('\nСобытия добавлены и синхронизированы.')); } catch (error) { message.appendChild(document.createTextNode('\n' + error.message)); } }; no.onclick = () => { yes.disabled = true; no.disabled = true; message.appendChild(document.createTextNode('\nДобавление отменено.')); }; }
+  $('chatForm').onsubmit = async event => { event.preventDefault(); const text = $('chatText').value.trim(); if (!text) return; addMessage(text, 'user'); $('chatText').value = ''; try { const result = await api('/api/assistant/message', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})}); askForConfirmation(result); } catch (error) { addMessage(error.message, 'assistant'); } };
+  $('attach').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = async () => { const file = $('fileInput').files[0]; if (!file) return; addMessage('Прикреплён файл: ' + file.name, 'user'); const form = new FormData(); form.append('file', file); try { const result = await api('/api/assistant/file', {method:'POST', body:form}); const prompt = `Проанализируй прикреплённый файл «${result.filename}» и извлеки из него важные события, даты, дедлайны и задачи.\n\nТекст файла:\n${result.text.slice(0, 50000)}`; const answer = await api('/api/assistant/message', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:prompt})}); askForConfirmation(answer); } catch (error) { addMessage(error.message, 'assistant'); } $('fileInput').value = ''; };
+  let recorder, audioChunks = [];
+  $('mic').onclick = async () => { try { if (recorder?.state === 'recording') { recorder.stop(); return; } const stream = await navigator.mediaDevices.getUserMedia({audio:true}); recorder = new MediaRecorder(stream); audioChunks = []; recorder.ondataavailable = event => audioChunks.push(event.data); recorder.onstop = async () => { stream.getTracks().forEach(track => track.stop()); $('recording').textContent = 'Распознаём голос...'; const form = new FormData(); form.append('audio', new Blob(audioChunks, {type:recorder.mimeType}), 'voice.webm'); try { const result = await api('/api/assistant/transcribe', {method:'POST', body:form}); $('chatText').value = result.text; $('recording').textContent = 'Текст готов. Нажмите «Отправить».'; } catch (error) { $('recording').textContent = error.message; } }; recorder.start(); $('mic').textContent = 'Остановить'; $('recording').textContent = 'Идёт запись...'; } catch (error) { $('recording').textContent = 'Нужно разрешить доступ к микрофону'; } };
+  async function loadAccount() { try { currentUser = await api('/api/me'); const identity = currentUser.name ? `${currentUser.name} (${currentUser.email})` : currentUser.email; $('account').textContent = identity; $('sessionState').textContent = 'Вы вошли как ' + identity; $('google').textContent = 'Google подключён'; } catch { const identityCookie = document.cookie.split('; ').find(item => item.startsWith('focus_day_identity=')); const email = identityCookie ? decodeURIComponent(identityCookie.split('=').slice(1).join('=')) : ''; if (email) { $('account').textContent = email; $('sessionState').textContent = 'Вы вошли как ' + email; $('google').textContent = 'Google подключён'; } else { $('account').textContent = 'Войдите через Google, чтобы продолжить'; $('sessionState').textContent = 'Вы не вошли'; } } }
+  loadAccount();
+</script>
+</body></html>
